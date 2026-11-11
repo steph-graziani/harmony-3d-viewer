@@ -91,10 +91,11 @@ h1 { font-family: var(--display); font-weight: 300; font-size: clamp(26px, 4vw, 
   let fitC = null, fitR = 0, fam = false, fitS = null;
   function frame() {
     if (!fitC) return;
+    camera.fov = fam ? 16 : 32; camera.updateProjectionMatrix();
     const fov = THREE.MathUtils.degToRad(camera.fov), hfov = 2 * Math.atan(Math.tan(fov / 2) * camera.aspect);
     let dist = Math.max(fitR / Math.sin(fov / 2) * 0.8, fitR / Math.sin(hfov / 2));
     if (fam && fitS) dist = Math.max((fitS.x / 2) / Math.tan(hfov / 2) * 1.06, (fitS.y * 2.2) / Math.tan(fov / 2)) + fitS.z / 2;
-    const dir = fam ? new THREE.Vector3(0, 0.36, 1).normalize() : new THREE.Vector3(0.62, 0.34, 0.7).normalize();
+    const dir = fam ? new THREE.Vector3(0, 0.3, 1).normalize() : new THREE.Vector3(0.62, 0.34, 0.7).normalize();
     camera.position.copy(fitC).addScaledVector(dir, dist); controls.target.copy(fitC);
     controls.minDistance = fitR * 0.5; controls.maxDistance = dist * 4; controls.update();
   }
