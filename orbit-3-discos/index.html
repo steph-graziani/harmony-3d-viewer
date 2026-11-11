@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orbit — 3 discos</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@300;400;500&display=swap">
+<style>
+/* Layout: estudo de uma tela. Cabeçalho com medidas; linha Hoje/Proposta; linha de tamanhos (+ Família); palco 3D. Sem IDs (regra 11/11). */
+:root {
+  --bg: #ede8e0; --surface: #f6f3ee; --fg: #3b3b3b; --muted: #827d73; --line: #d6ccbf; --accent: #998a7a; --stage: #e9e3da;
+  --display: "Cormorant Garamond", "Times New Roman", serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #24221e; --surface: #2e2b26; --fg: #ede8e0; --muted: #b3aa9c; --line: #46413a; --accent: #c2ab8c; --stage: #2a2823; color-scheme: dark } }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-weight: 300; display: flex; flex-direction: column; }
+[hidden] { display: none !important; }
+.pad { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: flex-end; justify-content: space-between; padding-block: 16px 12px; border-bottom: 1px solid var(--line); }
+.eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+h1 { font-family: var(--display); font-weight: 300; font-size: clamp(26px, 4vw, 38px); margin: 2px 0 0; line-height: 1.05; }
+.spec { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13px; }
+.spec div { display: flex; flex-direction: column; gap: 2px; }
+.spec b { font-weight: 500; font-variant-numeric: tabular-nums; font-size: 15px; }
+.spec .hl b { color: var(--accent); }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-block: 8px; }
+.bar + .bar { padding-top: 0; }
+.chip { font: inherit; font-size: 13px; padding: 7px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--bg); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg .chip { border: 0; border-radius: 0; }
+.note { font-size: 12px; color: var(--muted); }
+#stage { flex: 1; position: relative; background: var(--stage); min-height: 320px; }
+#stage canvas { display: block; width: 100%; height: 100%; }
+#status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; pointer-events: none; }
+</style>
+</head><body>
+<header class="pad">
+  <div>
+    <div class="eyebrow">Harmony · Estudo · Orbit com 3 discos de base</div>
+    <h1 id="ttl">Orbit Coffee Table</h1>
+  </div>
+  <div class="spec" id="spec"></div>
+</header>
+<div class="bar pad">
+  <span class="note" id="hint">Arraste para girar · role ou pinça para zoom</span>
+</div>
+<div class="bar pad" role="group" aria-label="Tamanho" id="sizes"></div>
+<div id="stage"><div id="status">Carregando modelo…</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
+<script>
+(function () {
+  const DATA = [{"D": 60, "H": 40, "B": 40, "r": 67, "tv": 31.3, "tp": 56.2}, {"D": 90, "H": 33, "B": 50, "r": 56, "tv": 32.2, "tp": 67.2}, {"D": 100, "H": 33, "B": 60, "r": 60, "tv": 47.0, "tp": 98.9}, {"D": 110, "H": 33, "B": 60, "r": 55, "tv": 43.1, "tp": 93.2}];
+  const qs = new URLSearchParams(location.search);
+  let sel = qs.get('v') || 'familia';
+  const stage = document.getElementById('stage'), status = document.getElementById('status');
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  stage.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+  const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 80);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.495;
+  let touched = false; controls.addEventListener('start', () => { touched = true; });
+  const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(1.6, 3, 1.2); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -3.5, right: 3.5, top: 3.5, bottom: -3.5, near: 0.5, far: 10 });
+  sun.shadow.radius = 6; sun.shadow.bias = -0.0005; scene.add(sun);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), new THREE.ShadowMaterial({ opacity: 0.18 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  function theme() { scene.background = new THREE.Color(css('--stage')); }
+  theme(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change', theme);
+
+  let fitC = null, fitR = 0, fam = false, fitS = null;
+  function frame() {
+    if (!fitC) return;
+    camera.fov = fam ? 16 : 32; camera.updateProjectionMatrix();
+    const fov = THREE.MathUtils.degToRad(camera.fov), hfov = 2 * Math.atan(Math.tan(fov / 2) * camera.aspect);
+    let dist = Math.max(fitR / Math.sin(fov / 2) * 0.8, fitR / Math.sin(hfov / 2));
+    if (fam && fitS) dist = Math.max((fitS.x / 2) / Math.tan(hfov / 2) * 1.06, (fitS.y * 2.2) / Math.tan(fov / 2)) + fitS.z / 2;
+    const dir = fam ? new THREE.Vector3(0, 0.3, 1).normalize() : new THREE.Vector3(0.62, 0.34, 0.7).normalize();
+    camera.position.copy(fitC).addScaledVector(dir, dist); controls.target.copy(fitC);
+    controls.minDistance = fitR * 0.5; controls.maxDistance = dist * 4; controls.update();
+  }
+  function resize() { const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); if (!touched) frame(); }
+  new ResizeObserver(resize).observe(stage); resize();
+
+  const loader = new THREE.GLTFLoader(); let model = null; const cache = {};
+  function fileFor() { return sel === 'familia' ? 'orbit3d_familia.glb' : 'orbit3d_' + sel + '.glb'; }
+  function load() {
+    const file = fileFor(); status.hidden = false; status.textContent = 'Carregando modelo…';
+    const p = cache[file] || (cache[file] = fetch(file).then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }));
+    p.then(buf => loader.parse(buf.slice(0), '', g => {
+      if (model) scene.remove(model);
+      model = g.scene;
+      model.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.side = THREE.DoubleSide); } });
+      scene.add(model);
+      const bb = new THREE.Box3().setFromObject(model), c = bb.getCenter(new THREE.Vector3());
+      model.position.x -= c.x; model.position.z -= c.z; model.position.y -= bb.min.y;
+      bb.setFromObject(model); bb.getCenter(c);
+      fam = sel === 'familia'; fitS = bb.getSize(new THREE.Vector3()); fitC = c.clone(); fitR = bb.getBoundingSphere(new THREE.Sphere()).radius;
+      if (!touched) frame(); else controls.target.copy(fitC);
+      status.hidden = true; document.body.dataset.ready = '1';
+    }, () => { status.textContent = 'Não foi possível carregar o modelo.'; })).catch(() => { status.textContent = 'Não foi possível carregar o modelo.'; });
+    spec();
+  }
+  const n1 = v => String(v).replace('.', ',');
+  function spec() {
+    const el = document.getElementById('spec'), t = document.getElementById('ttl');
+    document.querySelectorAll('[data-v]').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === sel ? 'true' : 'false'));
+    if (sel === 'familia') {
+      t.textContent = 'Orbit · 3 discos de base';
+      el.innerHTML = '<div><span class="eyebrow">Da esquerda para a direita</span><b>Ø 60 · 90 · 100 · 110</b></div>' +
+        '<div class="hl"><span class="eyebrow">Discos da base</span><b>Ø 40 · 50 · 60 · 60</b></div>' +
+        '<div><span class="eyebrow">Hoje (fábrica)</span><b>Ø 40 em todas</b></div>';
+      return;
+    }
+    const r = DATA.find(x => 'd' + x.D + 'h' + x.H === sel);
+    t.textContent = 'Orbit Ø ' + r.D + ' × H ' + r.H;
+    el.innerHTML = '<div><span class="eyebrow">Tampo</span><b>Ø ' + r.D + ' cm</b></div>' +
+      '<div><span class="eyebrow">Altura (até o undertop)</span><b>' + r.H + ' cm</b></div>' +
+      '<div class="hl"><span class="eyebrow">Base</span><b>Ø ' + r.B + ' cm</b></div>' +
+      '<div><span class="eyebrow">Hoje (fábrica)</span><b>Ø 40 cm</b></div>' +
+      '<div><span class="eyebrow">Base / tampo</span><b>' + r.r + '%</b></div>' +
+      '<div><span class="eyebrow">Tomba com (borda, est.)</span><b>' + n1(r.tv) + ' kg vidro · ' + n1(r.tp) + ' kg pedra</b></div>';
+  }
+  const sz = document.getElementById('sizes');
+  const mk = (v, label) => { const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.dataset.v = v; b.id = 'v-' + v; b.textContent = label; b.addEventListener('click', () => { sel = v; load(); }); sz.appendChild(b); };
+  mk('familia', 'Família');
+  DATA.forEach(r => mk('d' + r.D + 'h' + r.H, 'Ø ' + r.D + ' · base Ø ' + r.B));
+  load();
+  (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+})();
+</script>
+</body></html>
