@@ -87,7 +87,7 @@ main { flex: 1; display: grid; grid-template-columns: 1fr; min-height: 0; }
   scene.environment = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
   const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 50);
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.495; controls.minDistance = 0.4; controls.maxDistance = 8;
+  controls.enableDamping = true; controls.addEventListener('start', () => { touched = true; }); controls.maxPolarAngle = Math.PI * 0.495; controls.minDistance = 0.4; controls.maxDistance = 8;
   const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(1.6, 3, 1.2); sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -1.2, right: 1.2, top: 1.2, bottom: -1.2, near: 0.5, far: 8 });
   sun.shadow.radius = 6; sun.shadow.bias = -0.0005; scene.add(sun);
@@ -98,11 +98,21 @@ main { flex: 1; display: grid; grid-template-columns: 1fr; min-height: 0; }
   applyTheme();
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
   new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-  function resize() { const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  // enquadra o modelo inteiro na tela (refaz ao mudar o tamanho da tela até o usuário mexer na câmera)
+  let fitC = null, fitR = 0, touched = false;
+  function frame() {
+    if (!fitC) return;
+    const fov = THREE.MathUtils.degToRad(camera.fov), hfov = 2 * Math.atan(Math.tan(fov / 2) * camera.aspect);
+    const dist = Math.max(fitR / Math.sin(fov / 2) * 0.8, fitR / Math.sin(hfov / 2) * 1.0);
+    const dir = new THREE.Vector3(0.62, 0.34, 0.7).normalize();
+    camera.position.copy(fitC).addScaledVector(dir, dist); controls.target.copy(fitC);
+    controls.minDistance = fitR * 0.8; controls.maxDistance = dist * 4; controls.update();
+  }
+  function resize() { const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); if (!touched) frame(); }
   new ResizeObserver(resize).observe(stage); resize();
 
   const loader = new THREE.GLTFLoader();
-  let model = null, framed = false;
+  let model = null;
   const fmt = v => (v * 100).toFixed(1).replace('.', ',');
 
   function load(file) {
@@ -131,14 +141,9 @@ main { flex: 1; display: grid; grid-template-columns: 1fr; min-height: 0; }
       const c = bb.getCenter(new THREE.Vector3());
       model.position.x -= c.x; model.position.z -= c.z; model.position.y -= bb.min.y;
       bb.setFromObject(model); bb.getCenter(c);
-      const r = bb.getBoundingSphere(new THREE.Sphere()).radius;
-      const fov = THREE.MathUtils.degToRad(camera.fov), hfov = 2 * Math.atan(Math.tan(fov / 2) * camera.aspect);
-      const fitH = r / Math.sin(fov / 2), fitW = r / Math.sin(hfov / 2);
-      const dist = Math.max(fitH, fitW) * 0.8;
-      const dir = new THREE.Vector3(0.62, 0.34, 0.7).normalize();
-      controls.target.copy(c);
-      if (!framed) { camera.position.copy(c).addScaledVector(dir, dist); framed = true; }
-      controls.minDistance = r * 0.8; controls.maxDistance = dist * 4;
+      fitC = c.clone(); fitR = bb.getBoundingSphere(new THREE.Sphere()).radius;
+      controls.target.copy(fitC);
+      if (!touched) frame();
       controls.update();
       status.hidden = true;
     }
