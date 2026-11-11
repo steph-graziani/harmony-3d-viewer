@@ -66,7 +66,7 @@ h1 { font-family: var(--display); font-weight: 300; font-size: clamp(26px, 4vw, 
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.82;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   stage.appendChild(renderer.domElement);
   const scene = new THREE.Scene();
@@ -75,10 +75,14 @@ h1 { font-family: var(--display); font-weight: 300; font-size: clamp(26px, 4vw, 
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.495;
   let touched = false; controls.addEventListener('start', () => { touched = true; });
-  const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(1.6, 3, 1.2); sun.castShadow = true;
+  const sun = new THREE.DirectionalLight(0xfff6ea, 1.55); sun.position.set(-1.8, 3.2, 2.0); sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -3.5, right: 3.5, top: 3.5, bottom: -3.5, near: 0.5, far: 10 });
   sun.shadow.radius = 6; sun.shadow.bias = -0.0005; scene.add(sun);
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), new THREE.ShadowMaterial({ opacity: 0.18 }));
+  // LUZ DE ESTUDIO (padrao Harmony 11/11): principal (sombra) + preenchimento + contorno; ambiente fraco p/ ler forma e chanfros
+  const fill = new THREE.DirectionalLight(0xeef2ff, 0.38); fill.position.set(2.6, 1.2, 1.4); scene.add(fill);
+  const rim = new THREE.DirectionalLight(0xffffff, 0.95); rim.position.set(0.4, 1.6, -3.0); scene.add(rim);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x6f675c, 0.22));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), new THREE.ShadowMaterial({ opacity: 0.28 }));
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
   function theme() { scene.background = new THREE.Color(css('--stage')); }
   theme(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change', theme);
@@ -106,7 +110,7 @@ h1 { font-family: var(--display); font-weight: 300; font-size: clamp(26px, 4vw, 
     p.then(buf => loader.parse(buf.slice(0), '', g => {
       if (model) scene.remove(model);
       model = g.scene;
-      model.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.side = THREE.DoubleSide); } });
+      model.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { m.side = THREE.DoubleSide; m.envMapIntensity = 0.42; }); } });
       scene.add(model);
       const bb = new THREE.Box3().setFromObject(model), c = bb.getCenter(new THREE.Vector3());
       model.position.x -= c.x; model.position.z -= c.z; model.position.y -= bb.min.y;
