@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orbit — Estudo das bases</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@300;400;500&display=swap">
+<style>
+/* Layout: estudo de uma tela. Cabeçalho com medidas; linha Hoje/Proposta; linha de tamanhos (+ Família); palco 3D. Sem IDs (regra 11/11). */
+:root {
+  --bg: #ede8e0; --surface: #f6f3ee; --fg: #3b3b3b; --muted: #827d73; --line: #d6ccbf; --accent: #998a7a; --stage: #e9e3da;
+  --display: "Cormorant Garamond", "Times New Roman", serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #24221e; --surface: #2e2b26; --fg: #ede8e0; --muted: #b3aa9c; --line: #46413a; --accent: #c2ab8c; --stage: #2a2823; color-scheme: dark } }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-weight: 300; display: flex; flex-direction: column; }
+[hidden] { display: none !important; }
+.pad { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: flex-end; justify-content: space-between; padding-block: 16px 12px; border-bottom: 1px solid var(--line); }
+.eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+h1 { font-family: var(--display); font-weight: 300; font-size: clamp(26px, 4vw, 38px); margin: 2px 0 0; line-height: 1.05; }
+.spec { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13px; }
+.spec div { display: flex; flex-direction: column; gap: 2px; }
+.spec b { font-weight: 500; font-variant-numeric: tabular-nums; font-size: 15px; }
+.spec .hl b { color: var(--accent); }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-block: 8px; }
+.bar + .bar { padding-top: 0; }
+.chip { font: inherit; font-size: 13px; padding: 7px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--bg); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg .chip { border: 0; border-radius: 0; }
+.note { font-size: 12px; color: var(--muted); }
+#stage { flex: 1; position: relative; background: var(--stage); min-height: 320px; }
+#stage canvas { display: block; width: 100%; height: 100%; }
+#status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; pointer-events: none; }
+</style>
+</head><body>
+<header class="pad">
+  <div>
+    <div class="eyebrow">Harmony · Estudo · Base da Orbit</div>
+    <h1 id="ttl">Orbit Coffee Table</h1>
+  </div>
+  <div class="spec" id="spec"></div>
+</header>
+<div class="bar pad">
+  <div class="seg" role="group" aria-label="Versão">
+    <button class="chip" id="m-hoje" data-m="hoje" aria-pressed="false">Hoje · base Ø 40</button>
+    <button class="chip" id="m-prop" data-m="proposta" aria-pressed="true">Proposta</button>
+  </div>
+  <span class="note" id="hint">Arraste para girar · role ou pinça para zoom</span>
+</div>
+<div class="bar pad" role="group" aria-label="Tamanho" id="sizes"></div>
+<div id="stage"><div id="status">Carregando modelo…</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
+<script>
+(function () {
+  const SIZES = [[60,40],[80,40],[80,33],[90,26],[90,33],[90,40],[100,26],[100,33],[110,26],[110,33]];
+  const PROP = {60:40, 80:45, 90:50, 100:55, 110:60};
+  const qs = new URLSearchParams(location.search);
+  let mode = qs.get('m') === 'hoje' ? 'hoje' : 'proposta';
+  let sel = qs.get('v') || 'familia';
+  let EST = [];
+  const stage = document.getElementById('stage'), status = document.getElementById('status');
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  stage.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+  const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 80);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.495;
+  let touched = false; controls.addEventListener('start', () => { touched = true; });
+  const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(1.6, 3, 1.2); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -3.5, right: 3.5, top: 3.5, bottom: -3.5, near: 0.5, far: 10 });
+  sun.shadow.radius = 6; sun.shadow.bias = -0.0005; scene.add(sun);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), new THREE.ShadowMaterial({ opacity: 0.18 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  function theme() { scene.background = new THREE.Color(css('--stage')); }
+  theme(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change', theme);
+
+  let fitC = null, fitR = 0, fam = false;
+  function frame() {
+    if (!fitC) return;
+    const fov = THREE.MathUtils.degToRad(camera.fov), hfov = 2 * Math.atan(Math.tan(fov / 2) * camera.aspect);
+    const dist = Math.max(fitR / Math.sin(fov / 2) * 0.8, fitR / Math.sin(hfov / 2) * (fam ? 0.82 : 1.0));
+    const dir = fam ? new THREE.Vector3(0, 0.28, 1).normalize() : new THREE.Vector3(0.62, 0.34, 0.7).normalize();
+    camera.position.copy(fitC).addScaledVector(dir, dist); controls.target.copy(fitC);
+    controls.minDistance = fitR * 0.5; controls.maxDistance = dist * 4; controls.update();
+  }
+  function resize() { const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); if (!touched) frame(); }
+  new ResizeObserver(resize).observe(stage); resize();
+
+  const loader = new THREE.GLTFLoader(); let model = null; const cache = {};
+  function fileFor() { return (sel === 'familia' ? 'familia_' : 'orbit_' + sel + '_') + (mode === 'proposta' ? 'proposta' : 'hoje') + '.glb'; }
+  function load() {
+    const file = fileFor(); status.hidden = false; status.textContent = 'Carregando modelo…';
+    const p = cache[file] || (cache[file] = fetch(file).then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }));
+    p.then(buf => loader.parse(buf.slice(0), '', g => {
+      if (model) scene.remove(model);
+      model = g.scene;
+      model.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.side = THREE.DoubleSide); } });
+      scene.add(model);
+      const bb = new THREE.Box3().setFromObject(model), c = bb.getCenter(new THREE.Vector3());
+      model.position.x -= c.x; model.position.z -= c.z; model.position.y -= bb.min.y;
+      bb.setFromObject(model); bb.getCenter(c);
+      fam = sel === 'familia'; fitC = c.clone(); fitR = bb.getBoundingSphere(new THREE.Sphere()).radius;
+      if (!touched) frame(); else controls.target.copy(fitC);
+      status.hidden = true; document.body.dataset.ready = '1';
+    }, () => { status.textContent = 'Não foi possível carregar o modelo.'; })).catch(() => { status.textContent = 'Não foi possível carregar o modelo.'; });
+    spec();
+  }
+  const n1 = v => String(v).replace('.', ',');
+  function spec() {
+    const el = document.getElementById('spec'), t = document.getElementById('ttl');
+    document.querySelectorAll('[data-m]').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === mode ? 'true' : 'false'));
+    document.querySelectorAll('[data-v]').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === sel ? 'true' : 'false'));
+    if (sel === 'familia') {
+      t.textContent = 'Orbit · família ' + (mode === 'proposta' ? '(proposta)' : '(hoje)');
+      el.innerHTML = '<div><span class="eyebrow">Da esquerda para a direita</span><b>Ø 60 · 80 · 90 · 100 · 110</b></div>' +
+        '<div class="hl"><span class="eyebrow">Bases</span><b>' + (mode === 'proposta' ? 'Ø 40 · 45 · 50 · 55 · 60' : 'Ø 40 em todas') + '</b></div>' +
+        '<div><span class="eyebrow">Alturas (até o undertop)</span><b>40 · 33 · 33 · 33 · 33</b></div>';
+      return;
+    }
+    const [D, H] = sel.replace('d', '').split('h').map(Number);
+    const r = EST.find(x => x.D === D && x.H === H) || {};
+    const k = mode === 'proposta' ? 'prop' : 'hoje';
+    t.textContent = 'Orbit Ø ' + D + ' × H ' + H + (mode === 'proposta' ? ' · proposta' : ' · hoje');
+    el.innerHTML = '<div><span class="eyebrow">Tampo</span><b>Ø ' + D + ' cm</b></div>' +
+      '<div><span class="eyebrow">Altura (até o undertop)</span><b>' + H + ' cm</b></div>' +
+      '<div class="hl"><span class="eyebrow">Base</span><b>Ø ' + (mode === 'proposta' ? PROP[D] : 40) + ' cm</b></div>' +
+      '<div><span class="eyebrow">Base / tampo</span><b>' + Math.round((r[k + '_ratio'] || 0) * 100) + '%</b></div>' +
+      '<div><span class="eyebrow">Tomba com (borda, est.)</span><b>' + n1(r[k + '_vidro_tomba']) + ' kg vidro · ' + n1(r[k + '_pedra_tomba']) + ' kg pedra</b></div>';
+  }
+  const sz = document.getElementById('sizes');
+  const mk = (v, label) => { const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.dataset.v = v; b.id = 'v-' + v; b.textContent = label; b.addEventListener('click', () => { sel = v; load(); }); sz.appendChild(b); };
+  mk('familia', 'Família');
+  SIZES.forEach(([d, h]) => mk('d' + d + 'h' + h, 'Ø ' + d + ' × H ' + h));
+  document.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => { mode = b.dataset.m; load(); }));
+  fetch('estab.json').then(r => r.json()).then(j => { EST = j; spec(); }).catch(() => {});
+  load();
+  (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+})();
+</script>
+</body></html>
