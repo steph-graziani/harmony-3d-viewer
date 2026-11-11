@@ -104,11 +104,12 @@ h1 { font-family: var(--display); font-weight: 300; font-size: clamp(26px, 4vw, 
   function resize() { const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); if (!touched) frame(); }
   new ResizeObserver(resize).observe(stage); resize();
 
+  const VER = '202611111212';  // muda a cada publicação: o navegador não usa GLB antigo do cache
   const loader = new THREE.GLTFLoader(); let model = null; const cache = {};
   function fileFor() { return (sel === 'familia' ? 'familia_' : 'orbit_' + sel + '_') + (mode === 'proposta' ? 'proposta' : 'hoje') + '.glb'; }
   function load() {
     const file = fileFor(); status.hidden = false; status.textContent = 'Carregando modelo…';
-    const p = cache[file] || (cache[file] = fetch(file).then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }));
+    const p = cache[file] || (cache[file] = fetch(file + '?v=' + VER).then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }));
     p.then(buf => loader.parse(buf.slice(0), '', g => {
       if (model) scene.remove(model);
       model = g.scene;
@@ -150,7 +151,7 @@ h1 { font-family: var(--display); font-weight: 300; font-size: clamp(26px, 4vw, 
   mk('familia', 'Família');
   SIZES.forEach(([d, h]) => mk('d' + d + 'h' + h, 'Ø ' + d + ' × H ' + h));
   document.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => { mode = b.dataset.m; load(); }));
-  fetch('estab.json').then(r => r.json()).then(j => { EST = j; spec(); }).catch(() => {});
+  fetch('estab.json?v=' + VER).then(r => r.json()).then(j => { EST = j; spec(); }).catch(() => {});
   load();
   (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
 })();
