@@ -82,7 +82,7 @@ h1 { font-family: var(--display); font-weight: 300; font-size: clamp(26px, 4vw, 
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.495;
   let touched = false; controls.addEventListener('start', () => { touched = true; });
-  const sun = new THREE.DirectionalLight(0xfff6ea, 1.55); sun.position.set(-1.8, 3.2, 2.0); sun.castShadow = true;
+  const sun = new THREE.DirectionalLight(0xfff6ea, 1.55); sun.position.set(-1.1, 4.4, 1.5); sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -3.5, right: 3.5, top: 3.5, bottom: -3.5, near: 0.5, far: 10 });
   sun.shadow.radius = 6; sun.shadow.bias = -0.0005; scene.add(sun);
   // LUZ DE ESTUDIO (padrao Harmony 11/11): principal (sombra) + preenchimento + contorno; ambiente fraco p/ ler forma e chanfros

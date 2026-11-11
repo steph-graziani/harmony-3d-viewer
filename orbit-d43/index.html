@@ -88,7 +88,7 @@ main { flex: 1; display: grid; grid-template-columns: 1fr; min-height: 0; }
   const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 50);
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.addEventListener('start', () => { touched = true; }); controls.maxPolarAngle = Math.PI * 0.495; controls.minDistance = 0.4; controls.maxDistance = 8;
-  const sun = new THREE.DirectionalLight(0xfff6ea, 1.55); sun.position.set(-1.8, 3.2, 2.0); sun.castShadow = true;
+  const sun = new THREE.DirectionalLight(0xfff6ea, 1.55); sun.position.set(-1.1, 4.4, 1.5); sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -1.2, right: 1.2, top: 1.2, bottom: -1.2, near: 0.5, far: 8 });
   sun.shadow.radius = 6; sun.shadow.bias = -0.0005; scene.add(sun);
   // LUZ DE ESTUDIO (padrao Harmony 11/11): principal (sombra) + preenchimento + contorno; ambiente fraco p/ ler forma e chanfros
