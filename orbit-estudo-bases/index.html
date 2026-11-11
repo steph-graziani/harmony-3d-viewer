@@ -88,12 +88,13 @@ h1 { font-family: var(--display); font-weight: 300; font-size: clamp(26px, 4vw, 
   function theme() { scene.background = new THREE.Color(css('--stage')); }
   theme(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change', theme);
 
-  let fitC = null, fitR = 0, fam = false;
+  let fitC = null, fitR = 0, fam = false, fitS = null;
   function frame() {
     if (!fitC) return;
     const fov = THREE.MathUtils.degToRad(camera.fov), hfov = 2 * Math.atan(Math.tan(fov / 2) * camera.aspect);
-    const dist = Math.max(fitR / Math.sin(fov / 2) * 0.8, fitR / Math.sin(hfov / 2) * (fam ? 0.82 : 1.0));
-    const dir = fam ? new THREE.Vector3(0, 0.28, 1).normalize() : new THREE.Vector3(0.62, 0.34, 0.7).normalize();
+    let dist = Math.max(fitR / Math.sin(fov / 2) * 0.8, fitR / Math.sin(hfov / 2));
+    if (fam && fitS) dist = Math.max((fitS.x / 2) / Math.tan(hfov / 2) * 1.06, (fitS.y * 2.2) / Math.tan(fov / 2)) + fitS.z / 2;
+    const dir = fam ? new THREE.Vector3(0, 0.36, 1).normalize() : new THREE.Vector3(0.62, 0.34, 0.7).normalize();
     camera.position.copy(fitC).addScaledVector(dir, dist); controls.target.copy(fitC);
     controls.minDistance = fitR * 0.5; controls.maxDistance = dist * 4; controls.update();
   }
@@ -113,7 +114,7 @@ h1 { font-family: var(--display); font-weight: 300; font-size: clamp(26px, 4vw, 
       const bb = new THREE.Box3().setFromObject(model), c = bb.getCenter(new THREE.Vector3());
       model.position.x -= c.x; model.position.z -= c.z; model.position.y -= bb.min.y;
       bb.setFromObject(model); bb.getCenter(c);
-      fam = sel === 'familia'; fitC = c.clone(); fitR = bb.getBoundingSphere(new THREE.Sphere()).radius;
+      fam = sel === 'familia'; fitS = bb.getSize(new THREE.Vector3()); fitC = c.clone(); fitR = bb.getBoundingSphere(new THREE.Sphere()).radius;
       if (!touched) frame(); else controls.target.copy(fitC);
       status.hidden = true; document.body.dataset.ready = '1';
     }, () => { status.textContent = 'Não foi possível carregar o modelo.'; })).catch(() => { status.textContent = 'Não foi possível carregar o modelo.'; });
