@@ -59,7 +59,7 @@ h1 { font-family: var(--display); font-weight: 300; font-size: clamp(26px, 4vw, 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
 <script>
 (function () {
-  const DATA = [{"D": 60, "H": 40, "B": 40, "r": 67, "tv": 31.3, "tp": 56.2}, {"D": 90, "H": 33, "B": 50, "r": 56, "tv": 32.2, "tp": 67.2}, {"D": 100, "H": 33, "B": 60, "r": 60, "tv": 47.0, "tp": 98.9}, {"D": 110, "H": 33, "B": 60, "r": 55, "tv": 43.1, "tp": 93.2}];
+  const DATA = [{"D": 60, "H": 40, "B": 40, "r": 67, "tv": 31.3, "tp": 56.2}, {"D": 80, "H": 33, "B": 50, "r": 62, "tv": 36.8, "tp": 73.6}, {"D": 90, "H": 33, "B": 50, "r": 56, "tv": 32.2, "tp": 67.2}, {"D": 100, "H": 33, "B": 60, "r": 60, "tv": 47.0, "tp": 98.9}, {"D": 110, "H": 33, "B": 60, "r": 55, "tv": 43.1, "tp": 93.2}];
   const qs = new URLSearchParams(location.search);
   let sel = qs.get('v') || 'familia';
   const stage = document.getElementById('stage'), status = document.getElementById('status');
@@ -122,8 +122,8 @@ h1 { font-family: var(--display); font-weight: 300; font-size: clamp(26px, 4vw, 
     document.querySelectorAll('[data-v]').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === sel ? 'true' : 'false'));
     if (sel === 'familia') {
       t.textContent = 'Orbit · 3 discos de base';
-      el.innerHTML = '<div><span class="eyebrow">Da esquerda para a direita</span><b>Ø 60 · 90 · 100 · 110</b></div>' +
-        '<div class="hl"><span class="eyebrow">Discos da base</span><b>Ø 40 · 50 · 60 · 60</b></div>' +
+      el.innerHTML = '<div><span class="eyebrow">Da esquerda para a direita</span><b>Ø 60 · 80 · 90 · 100 · 110</b></div>' +
+        '<div class="hl"><span class="eyebrow">Discos da base</span><b>Ø 40 · 50 · 50 · 60 · 60</b></div>' +
         '<div><span class="eyebrow">Hoje (fábrica)</span><b>Ø 40 em todas</b></div>';
       return;
     }
