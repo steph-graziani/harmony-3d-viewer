@@ -30,7 +30,7 @@ h1 { font-family: var(--display); font-weight: 300; font-size: clamp(26px, 4vw, 
 .spec .new b { color: var(--accent); }
 .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
 .tog { font-size: 13px; display: inline-flex; gap: 6px; align-items: center; color: var(--muted); cursor: pointer; }
-@media (max-width: 760px) { .spec { display: grid; grid-template-columns: 1fr 1fr; width: 100%; } .sep { display: none; } }
+@media (max-width: 760px) { .spec { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: auto; } .spec b { font-size: 14px; } .chip { font-size: 12px; } .sep { display: none; } }
 .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-block: 10px; }
 .chip { font: inherit; font-size: 13px; padding: 7px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; cursor: pointer; }
 .chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--bg); }
@@ -62,8 +62,8 @@ main { flex: 1; display: grid; grid-template-columns: 1fr; min-height: 0; }
   </div>
 </header>
 <div class="bar pad" role="group" aria-label="Foco">
-  <button class="chip" aria-pressed="true" data-focus="d40">Mesinha Ø 40 · ponta direita</button>
-  <button class="chip" aria-pressed="false" data-focus="d45">Mesinha Ø 45 · ponta esquerda</button>
+  <button class="chip" aria-pressed="true" data-focus="d40">Mesinha Ø 40 · direita</button>
+  <button class="chip" aria-pressed="false" data-focus="d45">Mesinha Ø 45 · esquerda</button>
   <button class="chip" aria-pressed="false" data-focus="all">Conjunto inteiro</button>
   <span class="sep" aria-hidden="true"></span>
   <label class="tog"><input type="checkbox" id="dim"> Esmaecer sofá e pessoa</label>
